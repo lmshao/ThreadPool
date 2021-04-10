@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <time.h>
 
-ThreadPool::ThreadPool(int threadsLimit)
+ThreadPool::ThreadPool(int threadsLimit) : _valid(true), _count(0), _idle(0), _quit(0), _threadsLimit(threadsLimit)
 {
     _valid = true;
 
@@ -30,11 +30,6 @@ ThreadPool::ThreadPool(int threadsLimit)
         perror("pthread_attr_setdetachstate");
         _valid = false;
     }
-
-    _count = 0;
-    _idle = 0;
-    _threadsLimit = threadsLimit;
-    _quit = 0;
 }
 
 ThreadPool::~ThreadPool()
@@ -82,7 +77,7 @@ void *workerThread(void *arg)
     printf("[%lu] --> Start\n", pthread_self());
 
     struct timespec abstime;
-    int timeout;
+    int timeout = 0;
 
     ThreadPool *pool = (ThreadPool *)arg;
     for (;;) {
@@ -105,17 +100,18 @@ void *workerThread(void *arg)
         }
 
         pool->_idle--;
-        if (pool->_tasks.size()) {
+        if (!pool->_tasks.empty()) {
             printf("[%lu] --> Running a task\n", pthread_self());
 
-            ThreadTask task = pool->_tasks.front();
+            ThreadPool::ThreadTask task = pool->_tasks.front();
             pool->_tasks.pop();
             // 解锁让其他线程运行
             pthread_mutex_unlock(&pool->_mutex);
 
+            // 取出一个任务运行
             task.task(task.arg);
 
-            // 新加锁
+            // 任务结束，新加锁
             pthread_mutex_lock(&pool->_mutex);
         }
 
@@ -144,7 +140,7 @@ void *workerThread(void *arg)
     return nullptr;
 }
 
-void ThreadPool::addTask(void *(*task)(void *), void *arg)
+void ThreadPool::addTask(function task, void *arg)
 {
     if (!_valid || task == nullptr)
         return;

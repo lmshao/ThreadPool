@@ -16,7 +16,7 @@ int main()
     std::cout << "-------------" << std::endl;
 
     ThreadPool pool(4);
-    for (int i = 0; i < 20; i++) {
+    for (int i = 0; i < 10; i++) {
         std::cout << i << std::endl;
         int *arg = new int(i);
         pool.addTask(task, arg);

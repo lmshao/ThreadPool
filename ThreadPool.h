@@ -8,23 +8,22 @@
 #include <pthread.h>
 #include <queue>
 
-struct ThreadTask {
-    void *(*task)(void *);  // function ptr
-    void *arg;              // params
-    ThreadTask(void *(*task)(void *), void *arg) : task(task), arg(arg) {}
-    ThreadTask() : task(nullptr), arg(nullptr){};
-};
-
-class ThreadPool
-{
-
+class ThreadPool {
   public:
-    ThreadPool(int threadsLimit = 100);
+    typedef void *(*function)(void *);
+    struct ThreadTask {
+        function task;  // function ptr
+        void *arg;      // params
+        ThreadTask(function task, void *arg) : task(task), arg(arg) {}
+        ThreadTask() : task(nullptr), arg(nullptr){};
+    };
+
+    explicit ThreadPool(int threadsLimit = 100);
     ~ThreadPool();
 
     friend void *workerThread(void *arg);
 
-    void addTask(void *(*task)(void *), void *arg);
+    void addTask(function task, void *arg);
 
   private:
     pthread_mutex_t _mutex;
@@ -32,13 +31,12 @@ class ThreadPool
     pthread_attr_t _attr;
 
     std::queue<ThreadTask> _tasks;
-    int _count;
-    int _idle;
+    int _count;  // 当前工作线程个数
+    int _idle;   // 当前空闲的线程个数
     int _threadsLimit;
-    int _quit;
+    int _quit;  //
 
     bool _valid;
-    bool _running;
 };
 
 #endif  // THREAD_POOL_H
